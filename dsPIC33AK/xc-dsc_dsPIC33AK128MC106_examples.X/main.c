@@ -26,16 +26,46 @@
  * Created on May 22, 2023, 2:42 PM
  */
 
+/*
+ * File:   main.c
+ * Author: Zell
+ * V0.1, added uart init codes, RC7 TX working OK, original codes not working
+ * Modified on Jan 16, 2024,  
+ */
+
 
 #include "xc.h"
 #include "examples.h"
+#include "stdio.h"
+#include "string.h"
 
 //Some code examples are complete programs and define their own main(),
 //if one of those is used, comment this main() out.
-//int main(void) {
-//    
-////    
-//    while(1);
-//    
-//    return 0;
-//}
+//#define ADC_SINGLE_CONVERSION_EXAMPLE  comment out to disable this example, see example.h
+
+int UART_MCP2221_init(void);
+
+int main(void) {
+    
+    UART_MCP2221_init();
+    //printf("<This is the hello world demo for dsPIC33AK device test!>");
+    
+    IFS2bits.U1TXIF = 0; // Clear TX interrupt flag
+    U1TXREG = "Z" ;
+    IEC2bits.U1TXIE = 0;
+    while(1){
+        
+        //Re-transmit periodically
+        if (IEC2bits.U1TXIE == 0) { //Check if TX interrupt was disabled
+            //Delay
+            for (uint16_t i = 0; i < 0x3000; i++);
+            //Re-enable TX interrupt to resume transmission
+            IEC2bits.U1TXIE = 1;
+        }
+        
+
+}
+    
+    return 0;
+}
+

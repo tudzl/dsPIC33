@@ -80,7 +80,8 @@ void clock_ADC_for_40Msps_from_PLL2() {
 }
 
 #ifdef ADC_SINGLE_CONVERSION_EXAMPLE
-    
+ 
+
     // The channel output.
     long result = 0; 
     

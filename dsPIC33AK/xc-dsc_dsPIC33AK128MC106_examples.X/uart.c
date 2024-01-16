@@ -29,7 +29,8 @@
 #include "xc.h"
 #include "examples.h"
 
-#ifdef UART_TRANSMISSION_WITH_INTERRUPTS
+
+#ifdef UART_TRANSMISSION_WITH_MCP2221
 
 //Clock settings for CPU @8MHz, UART1 clocked from 1/2 speed UPB bus @4MHz
 #define FP 4000000
@@ -41,12 +42,19 @@
 uint8_t transmitChar[TRANSMIT_CHAR_SIZE] = "ABCDEFGHIJKLMNOP";
 uint8_t transmitCount = 0;
 
-
-int main(void) {    
+int UART_MCP2221_init(void){
     
+        //clock_CPU_from_FRC(); //added by zell
+    //clock_CPU_for_200MIPS_from_PLL1();  //added by zell
+    //clock_CPU_from_FRC();
+    //enable_POSC_for_8MHz_crystal();
     //Configure I/O
-    _RP41R = 9;     //Assign UART1 TX output functionality to RP41 (RC8)
-    _TRISC8 = 0;    //Set RC8 as output
+    //_RP41R = 9;     //Assign UART1 TX output functionality to RP41 (RC8)
+   // _TRISC8 = 0;    //Set RC8 as output
+    
+    //Select RC7 as output, UART_TX-->MCP2221, by Zell
+    _RP40R = 9;     //Assign UART1 TX output functionality to RP40 (RC7)
+    _TRISC7 = 0;
 
     U1CONbits.MODE = 0;    // Asynchronous 8-bit UART
     U1CONbits.CLKSEL = 0; // 1/2 speed UPB clock as Baud Clock source
@@ -61,6 +69,66 @@ int main(void) {
     
     U1CONbits.ON = 1; // Enable UART
     U1CONbits.TXEN = 1; // Enable UART TX. This generates TX interrupt.
+    
+}
+
+void __attribute__((interrupt)) _U1TXInterrupt(void)
+{ 
+    IFS2bits.U1TXIF = 0; // Clear TX interrupt flag
+    U1TXREG = transmitChar[transmitCount++]; // Transmit one character
+    
+    if (transmitCount >= TRANSMIT_CHAR_SIZE) {
+        transmitCount = 0;
+        //Stop transmitting by disabling the TX interrupt.
+        IEC2bits.U1TXIE = 0;
+    }
+}
+
+#endif
+
+
+#ifdef UART_TRANSMISSION_WITH_INTERRUPTS
+
+//Clock settings for CPU @8MHz, UART1 clocked from 1/2 speed UPB bus @4MHz
+#define FP 4000000
+#define BAUDRATE 9600
+//Baud rate calculation for fractional baud rate divider
+#define BRGVAL (FP/BAUDRATE)
+
+#define TRANSMIT_CHAR_SIZE 16
+uint8_t transmitChar[TRANSMIT_CHAR_SIZE] = "ABCDEFGHIJKLMNOP";
+uint8_t transmitCount = 0;
+
+
+
+
+int main(void) {    
+    //clock_CPU_from_FRC(); //added by zell
+    //clock_CPU_for_200MIPS_from_PLL1();  //added by zell
+    //clock_CPU_from_FRC();
+    //enable_POSC_for_8MHz_crystal();
+    //Configure I/O
+    //_RP41R = 9;     //Assign UART1 TX output functionality to RP41 (RC8)
+   // _TRISC8 = 0;    //Set RC8 as output
+    
+    //Select RC7 as output, UART_TX-->MCP2221, by Zell
+    _RP40R = 9;     //Assign UART1 TX output functionality to RP40 (RC7)
+    _TRISC7 = 0;
+
+    U1CONbits.MODE = 0;    // Asynchronous 8-bit UART
+    U1CONbits.CLKSEL = 0; // 1/2 speed UPB clock as Baud Clock source
+    U1CONbits.STSEL = 0;   // 1 stop bit
+
+    //Use fractional baud rate divider
+    U1CONbits.CLKMOD = 1;   
+    U1BRG = BRGVAL; // Baud Rate setting for 9600
+
+    U1STATbits.TXWM = 0; // Interrupt when TX buffer is empty (8 empty slots)
+    IEC2bits.U1TXIE = 1; // Enable Transmit interrupt
+    
+    U1CONbits.ON = 1; // Enable UART
+    U1CONbits.TXEN = 1; // Enable UART TX. This generates TX interrupt.
+    //printf("<This is the hello world demo for dsPIC33AK device test!>"); //not working
     
     while(1) {
         //Re-transmit periodically
